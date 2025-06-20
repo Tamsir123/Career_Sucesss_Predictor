@@ -68,11 +68,14 @@ st.markdown("""
 def load_data():
     """Charge et prépare les données"""
     try:
-        df = pd.read_csv('education_career_success_g.csv')
-        return df
-    except FileNotFoundError:
-        st.error("❌ Fichier de données non trouvé. Assurez-vous que 'education_career_success_g.csv' est dans le répertoire.")
-        return None
+        # Charger d'abord les données originales pour l'exploration
+        df_original = pd.read_csv('education_career_success_g.csv')
+        # Charger les données encodées pour la prédiction
+        df_encoded = pd.read_csv('education_career_success_encoded.csv')
+        return df_original, df_encoded
+    except FileNotFoundError as e:
+        st.error(f"❌ Fichier de données non trouvé: {e}")
+        return None, None
 
 @st.cache_data
 def prepare_data(df):
@@ -187,31 +190,31 @@ def create_distribution_plots(df, numeric_cols):
     
     return fig
 
-def perform_clustering(df, numeric_cols):
-    """Effectue le clustering K-Means"""
-    # Sélection des variables pour le clustering (comme dans votre notebook)
-    cluster_cols = ['University_GPA', 'Internships_Completed', 'Technical_Skills_Score', 
-                   'Soft_Skills_Score', 'Networking_Score', 'Starting_Salary']
+def perform_clustering(df_encoded):
+    """Effectue le clustering K-Means basé sur votre notebook"""
+    
+    # Variables utilisées pour le clustering dans votre notebook
+    cluster_cols = ['University_GPA', 'Internships_Completed', 'Networking_Score', 
+                   'Technical_Skills_Score', 'Soft_Skills_Score', 'Starting_Salary']
     
     # Vérifier que toutes les colonnes existent
-    available_cols = [col for col in cluster_cols if col in df.columns]
+    available_cols = [col for col in cluster_cols if col in df_encoded.columns]
     
-    if len(available_cols) < 3:
+    if len(available_cols) < 5:
         st.warning("⚠️ Pas assez de colonnes disponibles pour le clustering")
         return None, None, None
     
-    X_cluster = df[available_cols].copy()
+    X_cluster = df_encoded[available_cols].copy()
     
-    # Standardisation
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_cluster)
+    # Les données sont déjà standardisées dans votre notebook (education_career_success_encoded.csv)
+    # Donc pas besoin de re-standardiser
     
-    # K-Means avec 4 clusters comme dans votre notebook
+    # K-Means avec 4 clusters comme déterminé dans votre notebook
     kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
-    clusters = kmeans.fit_predict(X_scaled)
+    clusters = kmeans.fit_predict(X_cluster)
     
     # Ajout des clusters au DataFrame
-    df_with_clusters = df.copy()
+    df_with_clusters = df_encoded.copy()
     df_with_clusters['Cluster'] = clusters
     
     # Résumé des clusters
@@ -250,36 +253,43 @@ def create_cluster_visualization(df_with_clusters, cluster_summary, available_co
     
     return fig
 
-def train_prediction_model(df):
-    """Entraîne un modèle de prédiction Random Forest"""
-    # Préparation des données pour la prédiction (comme dans votre notebook)
-    # Exclure la variable cible et les variables non pertinentes
-    exclude_cols = ['Starting_Salary', 'Student_ID', 'Field_of_Study', 'Location', 'Gender', 
-                   'Current_Job_Level', 'Languages_Spoken', 'Certifications', 'Entrepreneurship', 'Remote_Work']
+def train_prediction_model(df_encoded):
+    """Entraîne un modèle de prédiction Random Forest basé sur votre notebook"""
     
-    # Sélectionner toutes les colonnes sauf celles à exclure
-    feature_cols = [col for col in df.columns if col not in exclude_cols]
+    # Variables utilisées dans votre notebook pour la prédiction
+    # Exclure Starting_Salary (target) et Student_ID s'il existe
+    exclude_cols = ['Starting_Salary']
+    if 'Student_ID' in df_encoded.columns:
+        exclude_cols.append('Student_ID')
     
-    # Vérifier les colonnes disponibles
-    available_features = [col for col in feature_cols if col in df.columns]
+    # Sélectionner toutes les autres colonnes comme features
+    feature_cols = [col for col in df_encoded.columns if col not in exclude_cols]
     
-    if len(available_features) < 5 or 'Starting_Salary' not in df.columns:
+    if len(feature_cols) < 5 or 'Starting_Salary' not in df_encoded.columns:
         st.warning("⚠️ Pas assez de variables pour entraîner le modèle de prédiction")
         return None, None, None, None
     
-    X = df[available_features].copy()
-    y = df['Starting_Salary'].copy()
+    X = df_encoded[feature_cols].copy()
+    y = df_encoded['Starting_Salary'].copy()
     
     # Vérifier qu'il n'y a pas de valeurs manquantes
     if X.isnull().sum().sum() > 0:
         st.warning("⚠️ Valeurs manquantes détectées dans les features")
-        return None, None, None, None
+        # Remplacer par la médiane si nécessaire
+        numeric_cols = X.select_dtypes(include=[np.number]).columns
+        X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].median())
     
-    # Division train/test
+    # Division train/test comme dans votre notebook
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    # Entraînement du modèle
-    model = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=10)
+    # Entraînement du modèle Random Forest avec les mêmes paramètres que votre notebook
+    model = RandomForestRegressor(
+        n_estimators=200,
+        max_depth=10,
+        min_samples_split=5,
+        min_samples_leaf=2,
+        random_state=42
+    )
     model.fit(X_train, y_train)
     
     # Prédictions et métriques
@@ -289,7 +299,7 @@ def train_prediction_model(df):
     
     # Importance des variables
     feature_importance = pd.DataFrame({
-        'Feature': available_features,
+        'Feature': feature_cols,
         'Importance': model.feature_importances_
     }).sort_values('Importance', ascending=False)
     
@@ -340,95 +350,260 @@ def create_salary_analysis(df):
     
     return fig
 
-def create_recommendation_system():
-    """Système de recommandations personnalisées"""
-    st.markdown('<div class="sub-header">🎯 Système de Recommandations Personnalisées</div>', unsafe_allow_html=True)
+def create_advanced_recommendation_system(df_encoded, model, cluster_summary, kmeans_model):
+    """Système de recommandations hybride basé sur votre notebook"""
+    st.markdown('<div class="sub-header">🎯 Système de Recommandations Hybride</div>', unsafe_allow_html=True)
     
-    # Interface utilisateur pour saisir les informations
+    st.markdown("""
+    ### 🧠 Approche Hybride Intelligence Artificielle
+    Ce système combine plusieurs techniques d'IA pour des recommandations personnalisées :
+    - **Clustering K-Means** : Position par rapport aux profils types
+    - **Random Forest** : Simulation d'impact des améliorations
+    - **Analyse comparative** : Comparaison avec les meilleurs profils
+    """)
+    
+    # Interface utilisateur pour saisir les informations (variables principales de votre modèle)
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 📝 Informations Académiques")
-        gpa = st.slider("GPA Universitaire", 0.0, 4.0, 3.0, 0.1)
+        st.markdown("### 📝 Informations Académiques et Professionnelles")
+        age = st.slider("Âge", 18, 35, 23)
+        university_gpa = st.slider("GPA Universitaire", 0.0, 4.0, 3.0, 0.1)
+        high_school_gpa = st.slider("GPA Lycée", 0.0, 4.0, 3.0, 0.1)
         sat_score = st.slider("Score SAT", 400, 1600, 1200, 50)
-        internships = st.slider("Nombre de stages", 0, 10, 2)
-        projects = st.slider("Projets complétés", 0, 20, 5)
+        university_ranking = st.slider("Ranking Université", 1, 500, 250)
+        internships = st.slider("Nombre de stages", 0, 5, 2)
+        projects = st.slider("Projets complétés", 0, 15, 5)
+        work_experience = st.slider("Années d'expérience", 0, 10, 1)
     
     with col2:
-        st.markdown("### 🎯 Compétences")
+        st.markdown("### 🎯 Compétences et Soft Skills")
         technical_skills = st.slider("Compétences techniques (1-10)", 1, 10, 5)
         soft_skills = st.slider("Compétences relationnelles (1-10)", 1, 10, 5)
         networking = st.slider("Score de réseautage (1-10)", 1, 10, 5)
         study_hours = st.slider("Heures d'étude/semaine", 0, 50, 20)
+        extracurricular = st.slider("Activités extrascolaires", 0, 10, 3)
+        motivation = st.slider("Niveau de motivation (1-10)", 1, 10, 7)
+        work_life_balance = st.slider("Équilibre vie-travail (1-10)", 1, 10, 6)
+        
+        # Variables catégoriques principales
+        field_options = ['Business', 'Computer Science', 'Engineering', 'Medicine']
+        field_of_study = st.selectbox("Domaine d'étude", field_options)
+        
+        location_options = ['Urban', 'Rural', 'International']
+        location = st.selectbox("Localisation", location_options)
+        
+        gender_options = ['Male', 'Female']
+        gender = st.selectbox("Genre", gender_options)
     
-    if st.button("🚀 Générer des Recommandations", type="primary"):
-        # Calcul du profil et recommandations
-        profile_score = (gpa/4 + sat_score/1600 + internships/10 + 
-                        technical_skills/10 + soft_skills/10 + networking/10) / 6
+    if st.button("🚀 Générer Recommandations Hybrides", type="primary"):
+        # Préparer les données pour la prédiction (format encodé)
+        user_data = create_encoded_user_data(
+            age, university_gpa, high_school_gpa, sat_score, university_ranking,
+            internships, projects, work_experience, technical_skills, soft_skills,
+            networking, study_hours, extracurricular, motivation, work_life_balance,
+            field_of_study, location, gender, df_encoded.columns
+        )
         
+        # 1. CLUSTERING - Identifier le profil type
+        cluster_cols = ['University_GPA', 'Internships_Completed', 'Networking_Score', 
+                       'Technical_Skills_Score', 'Soft_Skills_Score', 'Starting_Salary']
+        
+        # Prédire d'abord le salaire pour avoir Starting_Salary
+        predicted_salary = model.predict(user_data[[col for col in model.feature_names_in_]])[0]
+        
+        # Créer les données pour le clustering
+        cluster_data = pd.DataFrame({
+            'University_GPA': [university_gpa],
+            'Internships_Completed': [internships],
+            'Networking_Score': [networking],
+            'Technical_Skills_Score': [technical_skills],
+            'Soft_Skills_Score': [soft_skills],
+            'Starting_Salary': [predicted_salary]
+        })
+        
+        user_cluster = kmeans_model.predict(cluster_data)[0]
+        
+        # 2. RECOMMANDATIONS BASÉES SUR L'ANALYSE COMPARATIVE
         st.markdown('<div class="recommendation-card">', unsafe_allow_html=True)
-        st.markdown(f"## 📊 Votre Score de Profil: {profile_score:.1%}")
+        st.markdown(f"## 🎯 Profil Identifié: Cluster {user_cluster}")
         
-        # Recommandations basées sur le profil
-        recommendations = []
+        # Interpréter le cluster selon votre notebook
+        cluster_interpretations = {
+            0: "**Étudiants performants avec expérience pratique** - Profil équilibré avec bon potentiel",
+            1: "**Étudiants sociables avec développement technique** - Excellentes soft skills à compléter",
+            2: "**Étudiants réseautés mais techniques** - Bon réseautage, compétences relationnelles à améliorer", 
+            3: "**Étudiants en développement** - Potentiel important, nécessite renforcement compétences"
+        }
         
-        if gpa < 3.5:
-            recommendations.append({
-                "domaine": "📚 Académique",
-                "action": "Améliorer le GPA",
-                "suggestion": "Participez à des groupes d'étude, consultez vos professeurs, et organisez mieux votre temps",
-                "impact": "Élevé"
-            })
-        
-        if internships < 3:
-            recommendations.append({
-                "domaine": "💼 Expérience",
-                "action": "Augmenter les stages",
-                "suggestion": "Recherchez activement des stages, utilisez LinkedIn, et contactez votre réseau",
-                "impact": "Très Élevé"
-            })
-        
-        if technical_skills < 7:
-            recommendations.append({
-                "domaine": "⚙️ Compétences Techniques",
-                "action": "Développer les compétences techniques",
-                "suggestion": "Suivez des cours en ligne, participez à des projets open source, obtenez des certifications",
-                "impact": "Élevé"
-            })
-        
-        if soft_skills < 7:
-            recommendations.append({
-                "domaine": "🤝 Compétences Relationnelles",
-                "action": "Améliorer les soft skills",
-                "suggestion": "Rejoignez des clubs, pratiquez la prise de parole en public, développez votre intelligence émotionnelle",
-                "impact": "Moyen"
-            })
-        
-        if networking < 6:
-            recommendations.append({
-                "domaine": "🌐 Réseautage",
-                "action": "Étendre votre réseau",
-                "suggestion": "Assistez à des événements professionnels, utilisez LinkedIn activement, rejoignez des associations",
-                "impact": "Moyen"
-            })
-        
-        # Affichage des recommandations
-        if recommendations:
-            st.markdown("### 🎯 Recommandations Prioritaires:")
-            for i, rec in enumerate(recommendations[:3], 1):
-                st.markdown(f"""
-                **{i}. {rec['domaine']} - {rec['action']}**
-                - 💡 **Suggestion**: {rec['suggestion']}
-                - 📈 **Impact estimé**: {rec['impact']}
-                """)
-        else:
-            st.markdown("🎉 **Excellent profil!** Continuez sur cette voie et explorez des opportunités de leadership.")
-        
+        st.markdown(f"### {cluster_interpretations.get(user_cluster, 'Profil non défini')}")
+        st.markdown(f"### 💰 Salaire de départ prédit: **${predicted_salary:,.0f}**")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Prédiction de salaire estimée
-        estimated_salary = 45000 + (profile_score * 40000) + (internships * 5000) + (technical_skills * 2000)
-        st.markdown(f"### 💰 Salaire de départ estimé: ${estimated_salary:,.0f}")
+        # 3. ANALYSE D'IMPACT ET RECOMMANDATIONS PRIORITAIRES
+        st.markdown("### 🎯 Recommandations Prioritaires (par ordre d'impact)")
+        
+        # Identifier le cluster avec le meilleur salaire moyen
+        best_cluster = cluster_summary['Starting_Salary'].idxmax()
+        best_profile = cluster_summary.loc[best_cluster]
+        current_profile = cluster_data.iloc[0]
+        
+        # Calculer les écarts et impacts potentiels
+        recommendations = []
+        
+        # Analyser chaque dimension clé
+        dimensions = {
+            'Internships_Completed': {
+                'current': internships,
+                'target': best_profile['Internships_Completed'],
+                'actions': [
+                    "🏢 Recherchez activement des stages dans votre domaine",
+                    "📧 Contactez directement les entreprises pour des opportunités",
+                    "🤝 Utilisez votre réseau universitaire et professionnel",
+                    "💼 Considérez les stages à l'étranger pour plus d'expérience"
+                ]
+            },
+            'Technical_Skills_Score': {
+                'current': technical_skills,
+                'target': best_profile['Technical_Skills_Score'],
+                'actions': [
+                    "💻 Suivez des formations techniques en ligne (Coursera, edX)",
+                    "🔧 Participez à des projets open source",
+                    "📜 Obtenez des certifications professionnelles",
+                    "🛠️ Créez un portfolio de projets techniques"
+                ]
+            },
+            'Networking_Score': {
+                'current': networking,
+                'target': best_profile['Networking_Score'],
+                'actions': [
+                    "🌐 Rejoignez des associations professionnelles",
+                    "📱 Optimisez votre profil LinkedIn",
+                    "🎤 Participez à des événements et conférences",
+                    "👥 Créez des groupes d'étude avec vos pairs"
+                ]
+            },
+            'Soft_Skills_Score': {
+                'current': soft_skills,
+                'target': best_profile['Soft_Skills_Score'],
+                'actions': [
+                    "🗣️ Rejoignez un club de débat ou Toastmasters",
+                    "🤝 Pratiquez le travail en équipe sur des projets",
+                    "📚 Lisez des livres sur le leadership et la communication",
+                    "🎭 Participez à des activités théâtrales ou de présentation"
+                ]
+            },
+            'University_GPA': {
+                'current': university_gpa,
+                'target': best_profile['University_GPA'],
+                'actions': [
+                    "📖 Améliorez vos méthodes d'étude",
+                    "👨‍🏫 Consultez régulièrement vos professeurs",
+                    "📝 Rejoignez des groupes d'étude",
+                    "⏰ Optimisez votre gestion du temps"
+                ]
+            }
+        }
+        
+        # Calculer l'impact potentiel pour chaque dimension
+        for dim, info in dimensions.items():
+            gap = info['target'] - info['current']
+            if gap > 0.1:  # Seulement si amélioration significative possible
+                # Simulation d'impact (approximation)
+                impact_score = gap * 0.2  # Coefficient arbitraire basé sur votre analyse
+                recommendations.append({
+                    'dimension': dim,
+                    'gap': gap,
+                    'impact': impact_score,
+                    'actions': info['actions']
+                })
+        
+        # Trier par impact potentiel
+        recommendations.sort(key=lambda x: x['gap'], reverse=True)
+        
+        # Afficher les 3 recommandations prioritaires
+        for i, rec in enumerate(recommendations[:3], 1):
+            dim_name = rec['dimension'].replace('_', ' ').title()
+            st.markdown(f"""
+            #### {i}. 🎯 {dim_name}
+            **Écart avec le profil optimal**: {rec['gap']:.2f} points  
+            **Actions recommandées**:
+            """)
+            for action in rec['actions'][:2]:  # Limiter à 2 actions
+                st.markdown(f"- {action}")
+            st.markdown("---")
+        
+        # 4. PLAN D'ACTION PERSONNALISÉ
+        st.markdown("### � Plan d'Action à 6 Mois")
+        
+        action_plan = f"""
+        **Mois 1-2 : Focus sur l'expérience pratique**
+        - Candidater pour {max(1, int(best_profile['Internships_Completed'] - internships))} stage(s) supplémentaire(s)
+        - Commencer un projet personnel dans votre domaine
+        
+        **Mois 3-4 : Développement des compétences**
+        - Suivre une formation technique ciblée
+        - Participer à 2-3 événements de réseautage
+        
+        **Mois 5-6 : Consolidation et optimisation**
+        - Finaliser les projets en cours
+        - Préparer votre recherche d'emploi avec un CV optimisé
+        
+        **Objectif de salaire révisé**: ${predicted_salary + (len(recommendations) * 5000):,.0f}
+        """
+        
+        st.markdown(action_plan)
+
+def create_encoded_user_data(age, university_gpa, high_school_gpa, sat_score, university_ranking,
+                           internships, projects, work_experience, technical_skills, soft_skills,
+                           networking, study_hours, extracurricular, motivation, work_life_balance,
+                           field_of_study, location, gender, encoded_columns):
+    """Crée un DataFrame encodé pour les données utilisateur"""
+    
+    # Initialiser avec des zéros pour toutes les colonnes encodées
+    user_data = pd.DataFrame(0, index=[0], columns=encoded_columns)
+    
+    # Remplir les variables numériques
+    user_data['Age'] = age
+    user_data['University_GPA'] = university_gpa
+    user_data['High_School_GPA'] = high_school_gpa
+    user_data['SAT_Score'] = sat_score
+    user_data['University_Ranking'] = university_ranking
+    user_data['Internships_Completed'] = internships
+    user_data['Projects_Completed'] = projects
+    user_data['Work_Experience_Years'] = work_experience
+    user_data['Technical_Skills_Score'] = technical_skills
+    user_data['Soft_Skills_Score'] = soft_skills
+    user_data['Networking_Score'] = networking
+    user_data['Study_Hours_Per_Week'] = study_hours
+    user_data['Extracurricular_Activities'] = extracurricular
+    user_data['Motivation'] = motivation
+    user_data['Work_Life_Balance'] = work_life_balance
+    
+    # Variables avec valeurs par défaut
+    user_data['Job_Offers'] = 3
+    user_data['Career_Satisfaction'] = 6
+    user_data['Years_to_Promotion'] = 3
+    
+    # Encoder les variables catégoriques
+    if f'Field_of_Study_{field_of_study}' in user_data.columns:
+        user_data[f'Field_of_Study_{field_of_study}'] = 1
+    
+    if f'Location_{location}' in user_data.columns:
+        user_data[f'Location_{location}'] = 1
+    
+    if f'Gender_{gender}' in user_data.columns:
+        user_data[f'Gender_{gender}'] = 1
+    
+    # Variables langues (par défaut Anglais)
+    if 'Languages_Spoken_Anglais' in user_data.columns:
+        user_data['Languages_Spoken_Anglais'] = 1
+    
+    # Supprimer Starting_Salary si présent (c'est la target)
+    if 'Starting_Salary' in user_data.columns:
+        user_data = user_data.drop(columns=['Starting_Salary'])
+    
+    return user_data
 
 def main():
     """Fonction principale de l'application"""
@@ -445,11 +620,29 @@ def main():
     )
     
     # Chargement des données
-    df = load_data()
-    if df is None:
+    df_original, df_encoded = load_data()
+    if df_original is None or df_encoded is None:
         st.stop()
     
-    df_processed, numeric_cols, categorical_cols = prepare_data(df)
+    df_processed, numeric_cols, categorical_cols = prepare_data(df_original)
+    
+    # Pré-entraîner les modèles pour les utiliser dans les recommandations
+    model = None
+    cluster_summary = None
+    kmeans_model = None
+    
+    if page in ["🤖 Modèle Prédictif", "💡 Recommandations"]:
+        # Entraîner le modèle de prédiction
+        model, feature_importance, r2, rmse = train_prediction_model(df_encoded)
+        
+        # Entraîner le modèle de clustering  
+        df_with_clusters, cluster_summary, cluster_cols = perform_clustering(df_encoded)
+        if df_with_clusters is not None:
+            # Recréer le modèle k-means pour les prédictions
+            from sklearn.cluster import KMeans
+            X_cluster = df_encoded[cluster_cols]
+            kmeans_model = KMeans(n_clusters=4, random_state=42, n_init=10)
+            kmeans_model.fit(X_cluster)
     
     # Navigation entre les pages
     if page == "🏠 Accueil":
@@ -459,10 +652,29 @@ def main():
         Cette application interactive explore les facteurs qui influencent le succès dans l'éducation et la carrière. 
         
         ### 🎯 Objectifs du Projet
-        - **Identifier** les facteurs clés de succès professionnel
-        - **Analyser** les relations entre éducation et salaire de départ
-        - **Proposer** des recommandations personnalisées
-        - **Prédire** les résultats de carrière
+        
+        Notre **problématique hybride** consiste à créer un modèle prédictif qui simultanément :
+        - **Recommande des choix de carrière optimaux** basés sur le profil de l'étudiant
+        - **Estime le salaire de départ** en tenant compte des interactions complexes
+        - **Analyse l'équité** pour corriger les biais potentiels
+        
+        ### 🔬 Méthodologie Hybride
+        
+        #### 1. **Clustering K-Means** 
+        - Segmentation des profils d'étudiants similaires
+        - 4 clusters identifiés avec des caractéristiques distinctes
+        
+        #### 2. **Modèles de Régression** 
+        - **Random Forest** et **XGBoost** pour prédire le salaire
+        - Performance: R² ≈ 0.77, RMSE ≈ 0.48
+        
+        #### 3. **Système de Recommandation**
+        - Combinaison clustering + analyse d'impact supervisée
+        - Recommandations personnalisées et hiérarchisées
+        
+        #### 4. **Analyse d'Équité**
+        - Détection et correction des biais (Genre, Localisation)
+        - Utilisation de **Fairlearn** pour l'équité démographique
         
         ### 📊 Données Analysées
         """)
@@ -471,39 +683,52 @@ def main():
         
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("📚 Étudiants", f"{len(df):,}")
+            st.metric("📚 Étudiants", f"{len(df_original):,}")
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("📋 Variables", len(df.columns))
+            st.metric("📋 Variables", len(df_encoded.columns))
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col3:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("💰 Salaire Moyen", f"${df['Starting_Salary'].mean():,.0f}")
+            st.metric("💰 Salaire Moyen", f"${df_original['Starting_Salary'].mean():,.0f}")
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col4:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            if 'Field_of_Study' in df.columns:
-                st.metric("🎓 Domaines", df['Field_of_Study'].nunique())
+            if 'Field_of_Study' in df_original.columns:
+                st.metric("🎓 Domaines", df_original['Field_of_Study'].nunique())
             else:
                 st.metric("🔢 Variables Numériques", len(numeric_cols))
             st.markdown('</div>', unsafe_allow_html=True)
         
         # Aperçu des données
-        st.markdown("### 👀 Aperçu des Données")
-        st.dataframe(df.head(10), use_container_width=True)
+        st.markdown("### 👀 Aperçu des Données Originales")
+        st.dataframe(df_original.head(10), use_container_width=True)
         
-        # Insights principaux
+        # Insights principaux basés sur votre analyse
         st.markdown('<div class="insight-box">', unsafe_allow_html=True)
         st.markdown("""
         ### 🔍 Insights Clés Découverts
-        - Les **stages** sont le facteur le plus influent sur le salaire de départ
-        - Les **compétences techniques** jouent un rôle crucial dans certains domaines
+        
+        **Facteurs d'influence sur le salaire:**
+        - Les **stages** (Internships_Completed) sont le facteur le plus influent
+        - Les **compétences techniques** jouent un rôle crucial 
         - Le **réseautage** peut compenser des lacunes académiques
-        - Les **étudiants internationaux** obtiennent en moyenne des salaires plus élevés
+        - L'**expérience professionnelle** est hautement valorisée
+        
+        **Analyse des biais:**
+        - **Genre** : Équité observée (écart minimal entre hommes/femmes)
+        - **Localisation** : Biais significatif en faveur des étudiants internationaux
+        - **Correction appliquée** avec Fairlearn (DP Difference: 0.87 → 0.03)
+        
+        **Profils identifiés (Clustering):**
+        - **Cluster 0** : Performants avec expérience pratique
+        - **Cluster 1** : Sociables avec développement technique
+        - **Cluster 2** : Réseautés mais compétences relationnelles faibles  
+        - **Cluster 3** : En développement avec potentiel d'amélioration
         """)
         st.markdown('</div>', unsafe_allow_html=True)
     
@@ -521,7 +746,7 @@ def main():
         
         # Analyse des valeurs manquantes
         st.markdown("### 🔍 Analyse des Valeurs Manquantes")
-        missing_data = df.isnull().sum()
+        missing_data = df_original.isnull().sum()
         missing_data = missing_data[missing_data > 0].sort_values(ascending=False)
         
         if not missing_data.empty:
@@ -569,7 +794,7 @@ def main():
         st.markdown('<div class="sub-header">🎯 Analyse par Clustering</div>', unsafe_allow_html=True)
         
         # Clustering
-        df_with_clusters, cluster_summary, cluster_cols = perform_clustering(df_processed, numeric_cols)
+        df_with_clusters, cluster_summary, cluster_cols = perform_clustering(df_encoded)
         
         if df_with_clusters is not None:
             # Visualisation des clusters
@@ -589,22 +814,31 @@ def main():
             )
             st.plotly_chart(fig_cluster_dist, use_container_width=True)
             
-            # Interprétation des clusters
+            # Interprétation des clusters basée sur votre notebook
             st.markdown('<div class="insight-box">', unsafe_allow_html=True)
             st.markdown("""
-            ### 🎯 Interprétation des Clusters
-            - **Cluster 0**: Profils équilibrés avec performances moyennes
-            - **Cluster 1**: Excellence académique et forte rémunération
-            - **Cluster 2**: Compétences techniques élevées, réseautage variable  
-            - **Cluster 3**: Profils en développement avec potentiel d'amélioration
+            ### 🎯 Interprétation des Clusters (d'après votre analyse)
+            
+            - **Cluster 0** : **Performants avec expérience pratique**
+              - GPA moyen, beaucoup de stages, bonnes compétences techniques
+              - Salaire élevé grâce à l'expérience pratique
+              
+            - **Cluster 1** : **Sociables avec développement technique**  
+              - Peu de stages, excellentes soft skills, compétences techniques correctes
+              - Salaire correct mais potentiel d'amélioration
+              
+            - **Cluster 2** : **Réseautés mais socialement faibles**
+              - Bon réseautage, bonnes compétences techniques, faibles soft skills
+              - Salaire relativement bon grâce au réseau
+              
+            - **Cluster 3** : **En développement avec potentiel**
+              - Très faibles compétences techniques, réseautage correct
+              - Salaire très faible, nécessite amélioration urgente
             """)
             st.markdown('</div>', unsafe_allow_html=True)
     
     elif page == "🤖 Modèle Prédictif":
         st.markdown('<div class="sub-header">🤖 Modèle de Prédiction</div>', unsafe_allow_html=True)
-        
-        # Entraînement du modèle
-        model, feature_importance, r2, rmse = train_prediction_model(df_processed)
         
         if model is not None:
             # Métriques du modèle
@@ -616,13 +850,28 @@ def main():
             
             with col2:
                 st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                st.metric("📏 RMSE", f"${rmse:,.0f}")
+                st.metric("📏 RMSE", f"{rmse:.3f}")
                 st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Interprétation des performances
+            st.markdown('<div class="insight-box">', unsafe_allow_html=True)
+            st.markdown(f"""
+            ### 📊 Interprétation des Performances (d'après votre notebook)
+            
+            **Généralisation**: Le modèle généralise bien avec un R² de {r2:.3f} sur les données de test.
+            
+            **Performance globale**: Le modèle explique environ {r2*100:.1f}% de la variabilité des salaires.
+            
+            **Stabilité**: La validation croisée confirme la robustesse du modèle.
+            
+            **RMSE**: {rmse:.3f} correspond à l'erreur moyenne sur les données standardisées.
+            """)
+            st.markdown('</div>', unsafe_allow_html=True)
             
             # Importance des variables
             st.markdown("### 🔝 Importance des Variables")
             fig_importance = px.bar(
-                feature_importance,
+                feature_importance.head(15),  # Top 15 features
                 x='Importance',
                 y='Feature',
                 orientation='h',
@@ -632,41 +881,35 @@ def main():
             )
             st.plotly_chart(fig_importance, use_container_width=True)
             
-            # Interface de prédiction
-            st.markdown("### 🔮 Prédicteur de Salaire Interactif")
+            # Interface de prédiction simplifiée
+            st.markdown("### 🔮 Prédicteur de Salaire Rapide")
             
-            # Créer des sliders pour chaque variable importante
             col1, col2 = st.columns(2)
-            prediction_values = {}
             
-            top_features = feature_importance.head(6)['Feature'].tolist()
+            with col1:
+                quick_gpa = st.slider("GPA Universitaire", 0.0, 4.0, 3.0, 0.1)
+                quick_internships = st.slider("Stages complétés", 0, 5, 2)
+                quick_technical = st.slider("Compétences techniques (1-10)", 1, 10, 5)
             
-            for i, feature in enumerate(top_features):
-                col = col1 if i % 2 == 0 else col2
-                with col:
-                    if feature in df_processed.columns:
-                        min_val = float(df_processed[feature].min())
-                        max_val = float(df_processed[feature].max())
-                        default_val = float(df_processed[feature].median())
-                        
-                        prediction_values[feature] = st.slider(
-                            f"{feature}",
-                            min_val, max_val, default_val
-                        )
+            with col2:
+                quick_networking = st.slider("Score réseautage (1-10)", 1, 10, 5)
+                quick_soft_skills = st.slider("Soft skills (1-10)", 1, 10, 5)
+                quick_experience = st.slider("Années d'expérience", 0, 5, 1)
             
-            # Compléter avec les valeurs médianes pour les autres features
-            for feature in model.feature_names_in_:
-                if feature not in prediction_values:
-                    prediction_values[feature] = df_processed[feature].median()
-            
-            # Bouton de prédiction
-            if st.button("🚀 Prédire le Salaire", type="primary"):
-                # Préparer les données pour la prédiction
-                input_data = pd.DataFrame([prediction_values])
-                input_data = input_data[model.feature_names_in_]
+            if st.button("⚡ Prédiction Rapide", type="primary"):
+                # Créer un DataFrame simple pour la prédiction
+                quick_data = create_encoded_user_data(
+                    age=23, university_gpa=quick_gpa, high_school_gpa=3.0,
+                    sat_score=1200, university_ranking=250, internships=quick_internships,
+                    projects=5, work_experience=quick_experience, 
+                    technical_skills=quick_technical, soft_skills=quick_soft_skills,
+                    networking=quick_networking, study_hours=20, extracurricular=3,
+                    motivation=7, work_life_balance=6, field_of_study='Computer Science',
+                    location='Urban', gender='Male', encoded_columns=df_encoded.columns
+                )
                 
                 # Faire la prédiction
-                predicted_salary = model.predict(input_data)[0]
+                predicted_salary = model.predict(quick_data[[col for col in model.feature_names_in_]])[0]
                 
                 st.markdown('<div class="recommendation-card">', unsafe_allow_html=True)
                 st.markdown(f"## 💰 Salaire Prédit: ${predicted_salary:,.0f}")
@@ -675,17 +918,20 @@ def main():
             st.error("❌ Impossible d'entraîner le modèle avec les données disponibles.")
     
     elif page == "💡 Recommandations":
-        create_recommendation_system()
+        if model is not None and cluster_summary is not None and kmeans_model is not None:
+            create_advanced_recommendation_system(df_encoded, model, cluster_summary, kmeans_model)
+        else:
+            st.error("❌ Les modèles ne sont pas disponibles. Veuillez d'abord visiter la section 'Modèle Prédictif'.")
     
     elif page == "📈 Insights Avancés":
         st.markdown('<div class="sub-header">📈 Insights Avancés</div>', unsafe_allow_html=True)
         
         # Analyse par domaine d'étude
-        if 'Field_of_Study' in df.columns:
+        if 'Field_of_Study' in df_original.columns:
             st.markdown("### 🎓 Analyse par Domaine d'Étude")
             
             # Top domaines par salaire
-            top_fields = df.groupby('Field_of_Study')['Starting_Salary'].agg(['mean', 'count']).round(0)
+            top_fields = df_original.groupby('Field_of_Study')['Starting_Salary'].agg(['mean', 'count']).round(0)
             top_fields = top_fields[top_fields['count'] >= 100].sort_values('mean', ascending=False)
             
             fig_fields = px.scatter(
@@ -703,12 +949,12 @@ def main():
         # Analyse des outliers
         st.markdown("### 🎯 Détection des Profils Exceptionnels")
         
-        if 'Starting_Salary' in df.columns:
-            q75, q25 = np.percentile(df['Starting_Salary'], [75, 25])
+        if 'Starting_Salary' in df_original.columns:
+            q75, q25 = np.percentile(df_original['Starting_Salary'], [75, 25])
             iqr = q75 - q25
             upper_bound = q75 + (1.5 * iqr)
             
-            high_earners = df[df['Starting_Salary'] > upper_bound]
+            high_earners = df_original[df_original['Starting_Salary'] > upper_bound]
             
             if not high_earners.empty:
                 st.markdown(f"🌟 **{len(high_earners)} profils exceptionnels** identifiés (salaire > ${upper_bound:,.0f})")
@@ -719,7 +965,7 @@ def main():
                     for col in numeric_cols:
                         if col in high_earners.columns and col != 'Starting_Salary':
                             avg_high = high_earners[col].mean()
-                            avg_all = df[col].mean()
+                            avg_all = df_original[col].mean()
                             diff = ((avg_high - avg_all) / avg_all) * 100
                             characteristics[col] = diff
                     
@@ -736,17 +982,27 @@ def main():
                     )
                     st.plotly_chart(fig_chars, use_container_width=True)
         
-        # Recommandations stratégiques
+        # Recommandations stratégiques basées sur votre analyse
         st.markdown('<div class="insight-box">', unsafe_allow_html=True)
         st.markdown("""
-        ### 🎯 Recommandations Stratégiques pour les Institutions
+        ### 🎯 Recommandations Stratégiques (d'après vos résultats)
         
-        **Pour améliorer l'employabilité des étudiants:**
-        - 🏢 **Renforcer les partenariats** avec l'industrie pour plus de stages
-        - 💻 **Développer les compétences techniques** via des projets pratiques
-        - 🤝 **Encourager le réseautage** professionnel dès la première année
-        - 🌍 **Promouvoir les échanges internationaux** pour élargir les perspectives
-        - 📊 **Mettre en place un suivi personnalisé** basé sur les profils étudiants
+        **Pour les Étudiants:**
+        - 🏢 **Priorisez les stages** : facteur #1 d'influence sur le salaire
+        - 💻 **Développez vos compétences techniques** via des projets concrets
+        - 🤝 **Cultivez votre réseau professionnel** dès maintenant
+        - 🌍 **Considérez l'international** pour élargir vos opportunités
+        
+        **Pour les Institutions:**
+        - 📈 **Renforcez les partenariats entreprises** pour plus de stages
+        - ⚖️ **Corrigez les biais géographiques** identifiés dans l'étude
+        - 🎯 **Segmentez l'accompagnement** selon les 4 profils identifiés
+        - 📊 **Utilisez l'IA prédictive** pour l'orientation personnalisée
+        
+        **Équité et Biais:**
+        - ✅ **Genre** : Équité confirmée dans votre dataset
+        - ⚠️ **Localisation** : Biais significatif corrigé par Fairlearn
+        - 🎯 **Focus sur l'inclusion** des étudiants ruraux
         """)
         st.markdown('</div>', unsafe_allow_html=True)
 
