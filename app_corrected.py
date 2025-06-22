@@ -46,8 +46,35 @@ st.markdown("""
     }
     .sub-header {
         font-size: 1.5rem;
-        color: #ff7f0e;
+        color: var(--text-color, #ff7f0e);
         margin: 1rem 0;
+        font-weight: 600;
+    }
+    /* Adaptation automatique pour le mode sombre */
+    @media (prefers-color-scheme: dark) {
+        .sub-header {
+            color: #ffa500 !important;
+        }
+        .insight-box {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-left: 4px solid #1f77b4 !important;
+            color: var(--text-color, #ffffff) !important;
+        }
+        .cluster-interpretation {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-left: 4px solid #2196f3 !important;
+            color: var(--text-color, #ffffff) !important;
+        }
+    }
+    /* Style spécifique pour Streamlit en mode sombre */
+    [data-theme="dark"] .sub-header,
+    .stApp[data-theme="dark"] .sub-header {
+        color: #ffa500 !important;
+    }
+    [data-theme="dark"] .insight-box,
+    .stApp[data-theme="dark"] .insight-box {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #ffffff !important;
     }
     .metric-card {
         background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
@@ -92,6 +119,24 @@ st.markdown("""
         margin: 0 auto !important;
         display: block !important;
         mix-blend-mode: multiply;
+    }
+    /* Style pour la navigation dans la sidebar */
+    .sidebar .stRadio > div {
+        gap: 15px !important;
+    }
+    .sidebar .stRadio > div > label {
+        padding: 12px 0 !important;
+        margin: 8px 0 !important;
+        border-radius: 8px !important;
+        transition: all 0.3s ease !important;
+    }
+    .sidebar .stRadio > div > label:hover {
+        background-color: rgba(255, 75, 75, 0.1) !important;
+        transform: translateX(5px) !important;
+    }
+    .sidebar .stRadio > div > label > div {
+        font-size: 14px !important;
+        font-weight: 500 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -239,10 +284,28 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    st.sidebar.title("🧭 Navigation")
-    page = st.sidebar.selectbox(
-        "Choisissez une section:",
-        ["🏠 Accueil", "📊 Exploration", "⚖️ Équité & Biais", "🎯 Clustering", "🤖 Prédiction", "💡 Recommandations Hybrides"]
+    st.sidebar.markdown("""
+    <style>
+    div[data-testid="stRadio"] > div {
+        gap: 1rem !important;
+    }
+    div[data-testid="stRadio"] > div > label {
+        padding: 0.05rem 0 !important;
+        margin: 0.3rem 0 !important;
+        border-radius: 0.5rem !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-testid="stRadio"] > div > label:hover {
+        background-color: rgba(255, 75, 75, 0.1) !important;
+        transform: translateX(3px) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    page = st.sidebar.radio(
+        "",
+        ["🏠 Accueil", "📊 Exploration", "⚖️ Équité & Biais", "🎯 Clustering", "🤖 Prédiction", "💡 Recommandations Hybrides"],
+        label_visibility="collapsed"
     )
     
     # Chargement des données
@@ -1207,25 +1270,20 @@ def main():
             st.stop()
         
         # Introduction avec méthodologie
-        st.markdown("""
-        <div class="insight-box">
-        <h3>🎯 Approche Fairlearn Intégrée</h3>
-        <p>Cette section présente l'analyse d'équité complète basée sur votre méthodologie Fairlearn :</p>
+        st.info("""
+        **🎯 Approche Fairlearn Intégrée**
         
-        <h4>📋 Variables Sensibles Analysées :</h4>
-        <ul>
-        <li><strong>Localisation</strong> : Urban, Rural, International (biais géographique détecté)</li>
-        <li><strong>Genre</strong> : Male, Female (équité confirmée dans votre notebook)</li>
-        </ul>
+        Cette section présente l'analyse d'équité complète basée sur votre méthodologie Fairlearn :
         
-        <h4>🔧 Méthode Appliquée :</h4>
-        <ul>
-        <li><strong>Contrainte</strong> : Demographic Parity (ExponentiatedGradient)</li>
-        <li><strong>Transformation</strong> : Régression → Classification binaire (salaire > médiane)</li>
-        <li><strong>Métriques</strong> : Selection Rate, Demographic Parity Difference</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        **📋 Variables Sensibles Analysées :**
+        - **Localisation** : Urban, Rural, International (biais géographique détecté)
+        - **Genre** : Male, Female (équité confirmée dans votre notebook)
+        
+        **🔧 Méthode Appliquée :**
+        - **Contrainte** : Demographic Parity (ExponentiatedGradient)
+        - **Transformation** : Régression → Classification binaire (salaire > médiane)
+        - **Métriques** : Selection Rate, Demographic Parity Difference
+        """)
         
         # Tabs pour organiser les résultats
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 Équité Géographique", "👥 Équité de Genre", "🔍 Métriques Détaillées", "📈 Visualisations", "💻 Implémentation"])
