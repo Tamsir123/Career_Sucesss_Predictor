@@ -1925,66 +1925,118 @@
 #     main()
 
 
-# streamlit_app.py
 import streamlit as st
-import traceback
-import sys
 import os
+import sys
+import traceback
 
-# Configuration de la page
+# Configuration basique
 st.set_page_config(
-    page_title="Career Success Analytics",
-    page_icon="🎓",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Career Success Analytics - Debug",
+    page_icon="🔍",
+    layout="wide"
 )
 
-def main():
-    try:
-        # Test d'import
-        st.write("🔄 Importation du module principal...")
-        
-        # Import de votre application
-        import app_corrected
-        
-        st.write("✅ Module importé avec succès")
-        st.write("🚀 Lancement de l'application...")
-        
-        # Exécution de votre application
-        app_corrected.main()
-        
-    except ImportError as e:
-        st.error("❌ Erreur d'importation")
-        st.code(f"ImportError: {str(e)}")
-        st.info("📁 Vérifiez que app_corrected.py est présent")
-        
-    except FileNotFoundError as e:
-        st.error("📄 Fichier manquant")
-        st.code(f"FileNotFoundError: {str(e)}")
-        st.info("🔍 Fichiers requis : education_career_success_g.csv, education_career_success_encoded.csv, logo.png")
-        
-        # Lister les fichiers présents
-        st.write("📂 Fichiers présents dans le répertoire :")
-        try:
-            files = os.listdir('.')
-            for file in sorted(files):
-                st.write(f"- {file}")
-        except:
-            st.write("Impossible de lister les fichiers")
-            
-    except Exception as e:
-        st.error("💥 Erreur inattendue")
-        st.code(f"Error: {str(e)}")
-        st.code(f"Type: {type(e).__name__}")
-        
-        # Afficher la stack trace complète
-        st.write("🔍 Stack trace complète :")
-        st.code(traceback.format_exc())
-        
-        # Informations de debug
-        st.write("🐍 Informations Python :")
-        st.write(f"- Version Python: {sys.version}")
-        st.write(f"- Répertoire de travail: {os.getcwd()}")
+st.title("🔍 Diagnostic - Career Success Analytics")
 
-if __name__ == "__main__":
-    main()
+# Test 1: Environnement
+st.header("🌐 Environnement")
+st.write(f"Python: {sys.version}")
+st.write(f"Répertoire: {os.getcwd()}")
+
+# Test 2: Fichiers présents
+st.header("📂 Fichiers du projet")
+try:
+    files = os.listdir('.')
+    required_files = [
+        'app_corrected.py',
+        'education_career_success_g.csv', 
+        'education_career_success_encoded.csv',
+        'logo.png',
+        'requirements.txt'
+    ]
+    
+    for file in required_files:
+        if file in files:
+            st.write(f"✅ {file}")
+        else:
+            st.write(f"❌ {file} - MANQUANT")
+            
+    st.write("📋 Autres fichiers:")
+    for file in sorted(files):
+        if file not in required_files:
+            st.write(f"📄 {file}")
+            
+except Exception as e:
+    st.error(f"Erreur lecture fichiers: {e}")
+
+# Test 3: Imports de base
+st.header("📦 Test des imports")
+imports_test = [
+    ('pandas', 'pd'),
+    ('numpy', 'np'), 
+    ('streamlit', 'st'),
+    ('sklearn', None),
+    ('plotly', None),
+    ('seaborn', 'sns'),
+    ('matplotlib.pyplot', 'plt'),
+    ('fairlearn', None)
+]
+
+for module_name, alias in imports_test:
+    try:
+        if alias:
+            exec(f"import {module_name} as {alias}")
+        else:
+            exec(f"import {module_name}")
+        st.write(f"✅ {module_name}")
+    except Exception as e:
+        st.write(f"❌ {module_name}: {e}")
+
+# Test 4: Test de chargement des données
+st.header("📊 Test chargement données")
+try:
+    import pandas as pd
+    
+    # Test fichier principal
+    if os.path.exists('education_career_success_g.csv'):
+        df = pd.read_csv('education_career_success_g.csv')
+        st.write(f"✅ Données principales: {df.shape}")
+    else:
+        st.write("❌ education_career_success_g.csv manquant")
+        
+    # Test fichier encodé  
+    if os.path.exists('education_career_success_encoded.csv'):
+        df_encoded = pd.read_csv('education_career_success_encoded.csv')
+        st.write(f"✅ Données encodées: {df_encoded.shape}")
+    else:
+        st.write("❌ education_career_success_encoded.csv manquant")
+        
+except Exception as e:
+    st.error(f"Erreur chargement données: {e}")
+    st.code(traceback.format_exc())
+
+# Test 5: Import app_corrected
+st.header("🔧 Test import app_corrected")
+try:
+    import app_corrected
+    st.write("✅ app_corrected.py importé avec succès")
+    
+    # Test si la fonction main existe
+    if hasattr(app_corrected, 'main'):
+        st.write("✅ Fonction main() trouvée")
+        
+        if st.button("🚀 Tester l'application principale"):
+            try:
+                app_corrected.main()
+            except Exception as e:
+                st.error(f"❌ Erreur dans main(): {e}")
+                st.code(traceback.format_exc())
+    else:
+        st.write("❌ Fonction main() non trouvée")
+        
+except Exception as e:
+    st.error(f"❌ Impossible d'importer app_corrected: {e}")
+    st.code(traceback.format_exc())
+
+st.info("🔍 Ce diagnostic vous aidera à identifier le problème exact.")
