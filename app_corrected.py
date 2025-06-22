@@ -78,6 +78,21 @@ st.markdown("""
         margin: 0.5rem 0;
         border-left: 4px solid #2196f3;
     }
+    /* Style pour le logo dans la sidebar */
+    .sidebar-logo {
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 10px 0 20px 0 !important;
+    }
+    .sidebar-logo img {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        display: block !important;
+        mix-blend-mode: multiply;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -211,7 +226,19 @@ def main():
     st.markdown('<h1 class="main-header">🎓 Système Hybride: Recommandations de Carrière & Prédiction de Salaire</h1>', 
                 unsafe_allow_html=True)
     
-    # Sidebar navigation
+    # Sidebar navigation avec logo
+    # Logo dans la sidebar avec style transparent
+    st.sidebar.markdown("""
+    <div class="sidebar-logo" style="text-align: center; padding: 0; margin-bottom: 0;">
+    """, unsafe_allow_html=True)
+    
+    # Affichage du logo image avec transparence
+    st.sidebar.image("logo.png", width=180, use_container_width=True)
+    
+    st.sidebar.markdown("""
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.sidebar.title("🧭 Navigation")
     page = st.sidebar.selectbox(
         "Choisissez une section:",
