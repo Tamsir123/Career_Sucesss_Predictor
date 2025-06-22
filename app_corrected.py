@@ -442,7 +442,28 @@ def main():
             
             with col2:
                 st.markdown("### 🔧 Données Encodées (échantillon)")
-                st.dataframe(df_encoded.iloc[:, :10].head(), use_container_width=True)
+                # Afficher les mêmes 5 premières lignes mais dans leur version encodée
+                # en se concentrant sur les colonnes importantes incluant Gender et Location
+                
+                # Colonnes clés à afficher avec leurs versions encodées
+                key_encoded_cols = []
+                
+                # Variables Gender encodées
+                gender_cols = [col for col in df_encoded.columns if col.startswith('Gender_')]
+                key_encoded_cols.extend(gender_cols)
+                
+                # Variables Location encodées  
+                location_cols = [col for col in df_encoded.columns if col.startswith('Location_')]
+                key_encoded_cols.extend(location_cols)
+                
+                # Variables numériques importantes (pas encodées mais importantes à voir)
+                numeric_cols = ['Starting_Salary', 'University_GPA', 'Age', 'Technical_Skills_Score']
+                for col in numeric_cols:
+                    if col in df_encoded.columns:
+                        key_encoded_cols.append(col)
+                
+                # Afficher les 5 premières lignes avec ces colonnes encodées
+                st.dataframe(df_encoded[key_encoded_cols].head(), use_container_width=True)
             
             # Statistiques descriptives
             st.markdown("### 📈 Statistiques des Variables Numériques Principales")
