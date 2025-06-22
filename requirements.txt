@@ -1,19 +1,10 @@
-# streamlit
-# pandas
-# numpy
-# matplotlib
-# seaborn
-# plotly
-# scikit-learn
-# joblib
-# statsmodels
-# fairlearn
-streamlit>=1.28.0
-pandas>=1.5.0
-numpy>=1.21.0
-scikit-learn>=1.3.0
-plotly>=5.15.0
-seaborn>=0.11.0
-matplotlib>=3.5.0
-fairlearn>=0.9.0
-statsmodels>=0.13.0
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+scikit-learn
+joblib
+statsmodels
+fairlearn
