@@ -34,15 +34,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Force le mode sombre par défaut
+st.markdown("""
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Force le mode sombre
+    const themeButton = document.querySelector('[data-testid="stHeader"] button[title*="theme"]');
+    if (themeButton && !document.body.classList.contains('dark-theme')) {
+        themeButton.click();
+    }
+    
+    // Ajouter une classe pour identifier le mode sombre
+    document.body.setAttribute('data-theme', 'dark');
+});
+</script>
+""", unsafe_allow_html=True)
+
 # CSS personnalisé pour améliorer l'apparence
 st.markdown("""
 <style>
     .main-header {
         font-size: 3rem;
-        color: #1f77b4;
+        color: #ff6b35;
         text-align: center;
         margin-bottom: 2rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     .sub-header {
         font-size: 1.5rem;
