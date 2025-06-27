@@ -1,34 +1,47 @@
-# Rapport de Projet : Analyse de Carrière et Équité Salariale avec l'Intelligence Artificielle
+# Projet d'Analyse de Carrière et Prédiction Salariale avec Équité Algorithmique
 
 ## Table des Matières
 
-1. [Introduction et Contexte](#introduction-et-contexte)
-2. [Objectifs du Projet](#objectifs-du-projet)
-3. [Méthodologie et Approche](#méthodologie-et-approche)
-4. [Analyse Exploratoire des Données](#analyse-exploratoire-des-données)
-5. [Préparation et Transformation des Données](#préparation-et-transformation-des-données)
-6. [Modélisation Prédictive](#modélisation-prédictive)
-7. [Analyse d'Équité et Correction des Biais](#analyse-dequité-et-correction-des-biais)
-8. [Clustering et Segmentation](#clustering-et-segmentation)
+1. [Introduction](#introduction)
+2. [Contexte et Problématique](#contexte-et-problématique)
+3. [Objectifs du Projet](#objectifs-du-projet)
+4. [Description des Données](#description-des-données)
+5. [Méthodologie](#méthodologie)
+6. [Analyse Exploratoire](#analyse-exploratoire)
+7. [Modélisation](#modélisation)
+8. [Analyse d'Équité](#analyse-déquité)
 9. [Système de Recommandation](#système-de-recommandation)
-10. [Résultats et Impact](#résultats-et-impact)
-11. [Conclusions et Perspectives](#conclusions-et-perspectives)
+10. [Application Streamlit](#application-streamlit)
+11. [Résultats et Discussion](#résultats-et-discussion)
+12. [Conclusion](#conclusion)
 
 ---
 
-## Introduction et Contexte
+## Introduction
 
-### Problématique du Projet
+Ce projet s'inscrit dans le cadre de notre formation en intelligence artificielle et vise à développer un système complet d'aide à l'orientation professionnelle. L'idée principale était de créer un outil capable de prédire les salaires de départ des étudiants tout en leur fournissant des conseils personnalisés pour améliorer leurs perspectives de carrière.
 
-Dans un monde professionnel de plus en plus compétitif, les étudiants et jeunes diplômés font face à des défis considérables pour optimiser leur insertion professionnelle et maximiser leurs perspectives salariales. Cette difficulté s'explique par plusieurs facteurs convergents : la multiplication des compétences requises, l'évolution rapide des métiers due à la digitalisation, et l'asymétrie d'information entre les candidats et le marché du travail. Les étudiants peinent souvent à identifier quels sont les leviers les plus efficaces pour améliorer leur employabilité, tandis que les conseillers d'orientation manquent d'outils objectifs pour personnaliser leurs recommandations.
+L'originalité de ce travail réside dans l'attention particulière portée à **l'équité algorithmique**. Nous nous sommes rapidement rendu compte que créer un algorithme performant ne suffisait pas : il fallait aussi s'assurer qu'il ne discrimine aucun groupe d'étudiants et traite tout le monde de manière équitable.
 
-Parallèlement, les préoccupations concernant l'équité et la justice dans les décisions d'embauche et de rémunération sont devenues centrales. Les récents scandals impliquant des algorithmes de recrutement biaisés (comme celui d'Amazon en 2018 qui défavorisait systématiquement les femmes) ont sensibilisé l'opinion publique aux risques de reproduction et d'amplification des inégalités par l'intelligence artificielle. Cette prise de conscience a conduit à l'émergence d'un cadre réglementaire plus strict, notamment avec le RGPD en Europe et les propositions de lois sur l'IA équitable aux États-Unis.
+Le projet combine plusieurs techniques d'apprentissage automatique pour répondre à des questions concrètes que se posent tous les étudiants. Combien puis-je espérer gagner avec mon profil actuel ? Quels sont les aspects de mon parcours que je devrais améliorer en priorité ? Comment maximiser mes chances de réussir professionnellement ? Ces questions semblent simples, mais y répondre de manière scientifique et équitable s'est révélé être un défi technique et éthique passionnant.
 
-Ce projet s'inscrit dans cette double problématique en proposant une solution innovante basée sur l'intelligence artificielle qui répond simultanément aux besoins de performance et d'équité. Notre approche vise à :
+## Contexte et Problématique
 
-- **Prédire les salaires de départ** des étudiants en fonction de leur profil académique et professionnel, en utilisant des techniques de machine learning avancées qui capturent les relations complexes entre les variables, permettant ainsi aux étudiants d'avoir une estimation réaliste de leurs perspectives financières
-- **Identifier et corriger les biais** potentiels dans les prédictions, car nous considérons qu'un système prédictif n'est véritablement utile que s'il est équitable pour tous les utilisateurs, indépendamment de leur origine géographique, de leur genre, ou d'autres caractéristiques démographiques
-- **Fournir des recommandations personnalisées** pour améliorer les perspectives d'emploi, en combinant l'analyse de données massives avec l'expertise pédagogique pour orienter chaque étudiant vers les actions les plus impactantes pour son profil spécifique
+### Le Défi de l'Orientation Professionnelle Aujourd'hui
+
+L'orientation professionnelle constitue aujourd'hui un véritable casse-tête pour les étudiants. Le marché du travail évolue si rapidement que les conseils traditionnels deviennent obsolètes avant même d'être appliqués. Les métiers se transforment, de nouveaux secteurs émergent, et les compétences recherchées par les employeurs changent constamment.
+
+Face à cette complexité, les étudiants manquent souvent d'informations fiables et personnalisées. Les statistiques générales publiées par les universités ou les sites d'emploi donnent des moyennes qui ne correspondent pas forcément à leur situation particulière. Un étudiant en informatique qui a fait trois stages aura-t-il le même salaire qu'un autre qui n'en a fait aucun mais qui sort d'une université prestigieuse ? Ces nuances sont rarement prises en compte dans les conseils d'orientation classiques.
+
+Par ailleurs, tous les étudiants n'ont pas accès aux mêmes ressources d'orientation. Certains bénéficient de réseaux familiaux ou scolaires qui leur donnent accès à des informations privilégiées et des conseils avisés. D'autres, notamment ceux issus de milieux moins favorisés ou d'universités moins réputées, doivent naviguer seuls dans cette complexité. Cette inégalité d'accès aux conseils d'orientation contribue à perpétuer les inégalités sociales.
+
+### Pourquoi Utiliser l'Intelligence Artificielle ?
+
+L'intelligence artificielle présente des avantages uniques pour traiter cette problématique. Sa capacité à analyser simultanément de nombreuses variables et à identifier des patterns complexes en fait un outil idéal pour comprendre les facteurs de réussite professionnelle. Là où un conseiller humain ne peut retenir et croiser qu'un nombre limité d'informations, un algorithme peut examiner des milliers de parcours étudiants pour identifier quelles combinaisons de compétences, d'expériences et de choix mènent aux meilleurs résultats.
+
+Cependant, utiliser l'IA pour l'orientation soulève des questions éthiques importantes. Les algorithmes ont tendance à reproduire et même amplifier les biais présents dans les données qu'on leur fournit. Si historiquement certains groupes d'étudiants ont été défavorisés sur le marché du travail, l'algorithme risque d'apprendre ces inégalités et de les perpétuer en donnant des prédictions pessimistes à ces groupes.
+
+C'est pourquoi nous avons décidé de placer l'équité au cœur de notre projet. Notre objectif n'était pas seulement de créer un système performant, mais aussi de nous assurer qu'il traite tous les étudiants de manière juste, indépendamment de leur origine géographique, de leur genre ou d'autres caractéristiques qui ne devraient pas influencer leurs perspectives professionnelles.
 
 ### Enjeux Sociétaux
 
